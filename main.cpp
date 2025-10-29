@@ -1,3 +1,9 @@
+/*
+   未完成的功能：使用txt文件读取生日
+
+   链表存储生日数据
+ */
+
 #include <string>
 #include <iostream>
 #include <ctime>
