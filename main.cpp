@@ -1,3 +1,9 @@
+/*
+   未完成的功能：使用txt文件读取生日
+
+   链表存储生日数据
+ */
+
 #include <string>
 #include <iostream>
 #include <ctime>
@@ -5,6 +11,8 @@
 #include <algorithm>
 #include <limits> // 用于 numeric_limits
 #include <iomanip> // 用于 main 函数中的输出
+#include <fstream> // 文件读取
+#include <sstream> // 行解析
 
 using namespace std;
 
@@ -86,11 +94,15 @@ Date getCurrentBeijingDate() {
 // 全局常量和数据
 // =======================================================
 
-const int KnowedNum = 2; // 存储已经知道的生日信息个数
+const int KnowedNum = 6; // 存储已经知道的生日信息个数
 
 const struct BirthData BirthKnowed[KnowedNum] = {
     {"ymf", 2005, 5, 9}, 
-    {"lyq", 2005, 10, 28},
+    {"lyq", 2005, 10, 11},
+    {"hzw", 2005, 10, 30},
+    {"cd", 2005, 11, 22},
+    {"ymx", 2006, 3, 11},
+    {"chj", 2005, 10, 14}
 }; // 存储已经知道的生日数据
 
 // =======================================================
@@ -108,6 +120,8 @@ public:
     bool Data_Readin(const int operation); // 根据operation的值，使用文件读取，还是内置数据读取
 
     int CalcuBirth() const; // 计算距离今天最近的是谁的生日 (返回索引)
+
+    const BirthData& getData(int index) const { return allBirth[index]; }
 
     void print() const {
         for(int i = 0;i < DataNum; i++) {
@@ -130,7 +144,50 @@ bool Birth::Data_Readin(const int operation) {
         ReadKnowedBirth();
         return true;
     }
-    // operation == 1 时，这里是文件读取逻辑
+    // operation == 1 时，文件读取逻辑
+    if (operation == 1) {
+        std::cout << "请输入包含生日数据的txt文件路径: ";
+        std::string path;
+        std::getline(cin >> std::ws, path); // 读取整行，允许空格
+
+        // 直接使用 ifstream 打开路径（不考虑中文路径特殊处理）
+        std::ifstream fin(path, std::ios::in);
+        if (!fin.is_open()) {
+            std::cerr << "无法打开文件: " << path << std::endl;
+            return false;
+        }
+
+        DataNum = 0;
+        std::string line;
+        while (std::getline(fin, line)) {
+            if (line.empty()) continue;
+            // 支持用逗号或空格分隔: name,year,month,day 或 name year month day
+            for (char &ch : line) {
+                if (ch == ',') ch = ' ';
+            }
+            std::istringstream iss(line);
+            BirthData item;
+            if (!(iss >> item.name >> item.birthYear >> item.birthMonth >> item.birthDay)) {
+                // 跳过无效行
+                continue;
+            }
+            if (item.birthMonth < 1 || item.birthMonth > 12) continue;
+            if (item.birthDay < 1 || item.birthDay > 31) continue; // 粗略校验，后续按具体月份判断
+
+            if (DataNum < sizeof(allBirth)/sizeof(allBirth[0])) {
+                allBirth[DataNum++] = item;
+            } else {
+                std::cerr << "数据已达到最大容量，忽略多余条目。" << std::endl;
+                break;
+            }
+        }
+
+        if (DataNum == 0) {
+            std::cerr << "文件中没有读取到有效的生日数据。" << std::endl;
+            return false;
+        }
+        return true;
+    }
     return false;
 }
 
@@ -143,7 +200,7 @@ bool Birth::Data_Readin(const int operation) {
  */
 int Birth::CalcuBirth() const {
     // 1. 基础检查
-    if (DataNum <= 1) {
+    if (DataNum < 1) {
         return -1;
     }
 
@@ -164,7 +221,7 @@ int Birth::CalcuBirth() const {
         const int birthMonth = allBirth[i].birthMonth;
         const int birthDay = allBirth[i].birthDay;
         
-        // 计算生日在今年和明年的权重
+        // 计算生日在今年的权重
         const int birthdayWeightThisYear = dateToWeightAccurate(dateNow.year, birthMonth, birthDay);
 
         int daysToBirthday;
@@ -224,12 +281,27 @@ int main() {
 
     Birth test;
 
-    // 1. 读取内置数据
-    if (test.Data_Readin(2)) {
+    // 选择数据来源
+    std::cout << "请选择数据来源: 1=从txt文件读取, 2=使用内置数据" << std::endl;
+    int source = 2;
+    cin >> source;
+    if (source != 1 && source != 2) source = 2;
+
+    if (test.Data_Readin(source)) {
         std::cout << "数据读取成功！" << std::endl;
     } else {
         std::cout << "数据读取失败！" << std::endl;
-        return 1;
+        if (source == 1) {
+            std::cout << "将尝试使用内置数据..." << std::endl;
+            if (test.Data_Readin(2)) {
+                std::cout << "已切换至内置数据。" << std::endl;
+            } else {
+                std::cout << "内置数据读取也失败，程序结束。" << std::endl;
+                return 1;
+            }
+        } else {
+            return 1;
+        }
     }
 
     // 2. 打印当前日期
@@ -256,13 +328,12 @@ int main() {
 			int nearestIndex = test.CalcuBirth();
 
 			if (nearestIndex != -1) {
-				// 使用 BirthKnowed 数组来获取最近生日的人的信息，
-				// 因为 CalcuBirth 返回的是 allBirth/BirthKnowed 中的索引。
-				std::cout << "最近生日的人是: " << BirthKnowed[nearestIndex].name << std::endl;
+				const BirthData &bd = test.getData(nearestIndex);
+				std::cout << "最近生日的人是: " << bd.name << std::endl;
 				std::cout << "生日日期: " 
-						<< std::setw(2) << std::setfill('0') << BirthKnowed[nearestIndex].birthMonth 
+						<< std::setw(2) << std::setfill('0') << bd.birthMonth 
 						<< "月" 
-						<< std::setw(2) << std::setfill('0') << BirthKnowed[nearestIndex].birthDay 
+						<< std::setw(2) << std::setfill('0') << bd.birthDay 
 						<< "日" << std::endl;
 			} else {
 				std::cout << "没有有效的数据来计算最近生日。" << std::endl;
