@@ -4,7 +4,7 @@
 #include <limits> // 用于 numeric_limits
 #include <fstream> // 文件读取
 #include <sstream> // 行解析
-#include "time.h"
+#include "myTime.h"
 #include "birthclass.h"
 
 // =======================================================

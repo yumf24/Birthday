@@ -9,7 +9,7 @@
 #include <cmath>
 #include <iomanip> // 用于 main 函数中的输出
 #include "birthclass.h"
-#include "time.h"
+#include "myTime.h"
 
 using namespace std;
 

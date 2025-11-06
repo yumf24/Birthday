@@ -1,0 +1,96 @@
+.PHONY: all clean
+
+
+#变量赋值
+
+#Linux 命令工具
+CC = g++
+MKDIR = mkdir
+RM = rm
+RMFLAGS = -rf
+
+#用于生成静态库的工具ar
+AR = ar
+ARFLAGS = crs
+
+#目录变量
+DIR_EXES = $(ROOT)/build/exes
+DIR_OBJS = objs
+DIR_DEPS = deps
+DIR_LIBS = $(ROOT)/build/libs
+
+DIRS := $(DIR_EXES) $(DIR_OBJS) $(DIR_DEPS) $(DIR_LIBS)
+
+RMS = $(DIR_OBJS) $(DIR_DEPS) #clean要删除的文件
+
+#EXE变量 ifneq语句是为了make.rule
+ifneq ($(EXE),"")
+#EXE不为空
+EXE := $(addprefix $(DIR_EXES)/,$(EXE))
+RMS += $(EXE) #RMS加上EXE
+endif
+
+ifneq ($(LIB), "")
+LIB := $(addprefix $(DIR_LIBS)/,$(LIB))
+RMS += $(LIB)
+endif
+
+# .cpp和.o, .dep文件
+SRCS = $(wildcard *.cpp)
+OBJS = $(SRCS:.cpp=.o)
+OBJS := $(addprefix $(DIR_OBJS)/,$(OBJS))
+DEPS = $(SRCS:.cpp=.dep)
+DEPS := $(addprefix $(DIR_DEPS)/,$(DEPS))
+
+
+
+#构建规则
+ifneq ($(EXE), "")
+all: $(EXE)
+endif
+
+ifneq ($(LIB),"")
+all: $(LIB)
+endif
+
+ifneq ($(INC_DIRS),"")
+#头文件目录不为空
+INC_DIRS := $(strip $(INC_DIRS)) #去掉多余的空格
+INC_DIRS := $(addprefix -I, $(INC_DIRS))
+endif
+
+ifneq ($(LINK_LIBS),"")
+LINK_LIBS := $(strip $(LINK_LIBS))
+LINK_LIBS := $(addprefix -l,$(LINK_LIBS))
+endif
+
+ifneq ($(MAKECMDGOALS),clean)
+include $(DEPS)
+endif
+
+all:
+
+$(DIRS):
+	$(MKDIR) $@
+
+$(EXE): $(DIR_EXES) $(OBJS) 
+	$(CC) -L$(DIR_LIBS) -o $@ $(filter %.o,$^) $(LINK_LIBS)
+
+$(LIB): $(DIR_LIBS) $(OBJS) 
+	$(AR) $(ARFLAGS) $@ $(filter %.o,$^)
+
+$(DIR_OBJS)/%.o: $(DIR_OBJS) %.cpp 
+	$(CC) $(INC_DIRS) -o $@ -c $(filter %.cpp,$^)
+
+
+$(DIR_DEPS)/%.dep: %.cpp | $(DIR_DEPS)
+	@echo "Making $@"
+	@set -e;\
+	$(RM) $(RMFLAGS) $@.tmp;\
+	$(CC) $(INC_DIRS) -E -MM $(filter %.cpp, $^) > $@.tmp;\
+	sed 's,\(.*\)\.o[ :]*,$(DIR_OBJS)/\1.o $@: ,g' < $@.tmp > $@;\
+	$(RM) $(RMFLAGS) $@.tmp
+
+clean:
+	$(RM) $(RMFLAGS) $(RMS)
+

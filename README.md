@@ -7,3 +7,8 @@
 
 目录结构参考《驾驭Makefile》的huge项目
 
+
+
+Makefile使用：
+位于build目录下面的总控Makefile可以直接使用
+如果想要使用子Makefile的话，需要在项目根目录下面运行:  export ROOT=`pwd`
